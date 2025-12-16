@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理员控制台</title>
+  <style>
+    :root{
+      --bg: #0f172a;
+      --bg2: #111827;
+      --card-bg: #0b1222;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --border: #1f2a44;
+      --shadow: rgba(17,24,39,0.35);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,Segoe UI,Arial;
+      color:var(--text);
+      background: radial-gradient(1200px 600px at 20% -50%, #1e293b 0%, transparent 45%) no-repeat, linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+      min-height:100vh;
+      padding-top:64px;
+    }
+    .topbar{
+      position:fixed;top:0;left:0;right:0;height:64px;
+      display:flex;align-items:center;justify-content:space-between;
+      padding:0 20px;background:rgba(9,12,20,0.75);backdrop-filter:blur(8px);
+      border-bottom:1px solid var(--border);
+    }
+    .brand{font-weight:600;letter-spacing:.5px}
+    .container{width:min(1100px,92%);margin:24px auto}
+    h1{margin:0 0 18px 0;font-size:22px}
+    h2{margin-top:0;font-size:18px}
+    h3{margin:16px 0 8px 0;font-size:15px;color:var(--muted)}
+    .row{display:flex;gap:24px;flex-wrap:wrap}
+    .card{
+      background:var(--card-bg);
+      border:1px solid var(--border);
+      border-radius:14px;padding:18px;flex:1;min-width:320px;
+      box-shadow:0 10px 30px var(--shadow);
+    }
+    label{display:block;margin:10px 0 6px 0;color:var(--muted)}
+    input,select,textarea{
+      width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);
+      background:#0a1020;color:var(--text);outline:none;
+    }
+    textarea{min-height:80px}
+    .btn{
+      display:inline-flex;align-items:center;gap:8px;
+      background:var(--primary);color:#fff;border:none;border-radius:10px;padding:10px 14px;cursor:pointer;
+      transition:.2s ease;box-shadow:0 6px 16px rgba(59,130,246,.25);
+    }
+    .btn:hover{background:var(--primary-hover)}
+    .btn.secondary{background:#374151}
+    .btn.warn{background:var(--warn)}
+    .btn.danger{background:var(--danger)}
+    .muted{color:var(--muted);font-size:12px}
+    .mono{font-family:ui-monospace,Consolas}
+    .list{
+      white-space:normal;background:#0a1020;border:1px solid var(--border);
+      border-radius:10px;padding:10px;min-height:60px;color:var(--text)
+    }
+    a{color:var(--text);text-decoration:none;opacity:.9}
+    a:hover{opacity:1}
+    #appsList > div{border-bottom:1px solid var(--border)}
+    .toast-wrap{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:1000}
+    .toast{background:#0a1020;border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:10px;box-shadow:0 6px 16px var(--shadow);min-width:220px;opacity:.98}
+    .toast.warn{border-color:#f59e0b}
+    .toast.error{border-color:#ef4444}
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">寒衣补助 · 管理员控制台</div>
+    <div><a href="/student.html">学生登录</a></div>
+  </div>
+  <div class="container">
+  <div class="toast-wrap" id="toastWrap"></div>
+  <div class="card" id="adminLoginCard">
+    <h2>管理员登录</h2>
+    <label>用户名<input id="adminUsername" value="counselor1"></label>
+    <label>密码<input id="adminPassword" type="password" value="rjxy"></label>
+    <button class="btn" id="adminLoginBtn">登录</button>
+    <div class="muted">角色：<span id="adminRole" class="mono"></span> 用户：<span id="adminUser" class="mono"></span></div>
+    <div id="roleSelectWrap" style="margin-top:8px">当前审核视图：<select id="roleSelect"><option value="counselor">辅导员</option><option value="college">学院</option><option value="school">学校</option></select></div>
+  </div>
+  <div class="row" id="adminAppCards" style="display:none">
+    <div class="card" id="cardCreateBatch">
+      <h2>创建批次</h2>
+      <label>批次年份<input id="batchYear" value="2025"></label>
+      <label>困难认定学年<input id="diffYear" value="2025"></label>
+      <label>困难等级<select id="diffLevel"><option>HIGH</option><option>MEDIUM</option><option>LOW</option></select></label>
+      <label>申请截止时间ISO<input id="applyDeadline" value="2025-12-31T23:59:59"></label>
+      <button class="btn" id="openBatchBtn">创建批次</button>
+      <div class="muted">返回批次ID：<span id="openedBatchId" class="mono"></span></div>
+    </div>
+    <div class="card" id="cardSelectionDeadline">
+      <h2>设置选择截止</h2>
+      <label>批次ID<input id="selBatchId"></label>
+      <label>选择截止时间ISO<input id="selDeadline" value="2026-01-20T23:59:59"></label>
+      <button class="btn" id="setSelDeadlineBtn">设置选择截止</button>
+    </div>
+    <div class="card" id="cardCreateStyle">
+      <h2>创建款式</h2>
+      <label>名称<input id="styleName" value="男01款"></label>
+      <label>性别<select id="styleGender"><option>男</option><option>女</option></select></label>
+      <label>图片链接<input id="styleImage" value="https://example.com/image.jpg"></label>
+      <label>尺码变体JSON<textarea id="styleVariants" rows="4">[{"sizeLabel":"XL","productCode":"男01款XL码"},{"sizeLabel":"L","productCode":"男01款L码"}]</textarea></label>
+      <button class="btn" id="createStyleBtn">创建款式</button>
+      <div class="muted">返回款式ID：<span id="createdStyleId" class="mono"></span></div>
+    </div>
+    <div class="card" id="cardCreateStudent">
+      <h2>创建学生档案</h2>
+      <label>学号<input id="stuNum" value="20250001"></label>
+      <label>姓名<input id="stuName" value="张三"></label>
+      <label>性别<select id="stuGender"><option>男</option><option>女</option></select></label>
+      <label>身份证号<input id="stuIdCard" value="123456199901011234"></label>
+      <label>入学年份<input id="stuEntryYear" value="2025"></label>
+      <label>学院<input id="stuCollege" value="信息学院"></label>
+      <label>困难等级<select id="stuDiffLevel"><option>HIGH</option><option>MEDIUM</option><option>LOW</option></select></label>
+      <label>困难学年<input id="stuDiffYear" value="2025"></label>
+      <button class="btn" id="createStudentBtn">创建学生</button>
+      <div class="muted">返回学生ID：<span id="createdStudentId" class="mono"></span></div>
+    </div>
+    <div class="card" id="cardBatchOps">
+      <h2>批次操作</h2>
+      <div>
+        <button class="btn warn" id="submitCollegeBtn">提交至学院</button>
+        <button class="btn warn" id="submitSchoolBtn">提交至学校</button>
+        <button class="btn danger" id="finalizeBtn">学校终审并通知</button>
+      </div>
+      <div class="muted">使用“审核页面”中的批次ID</div>
+    </div>
+    <div class="card" id="cardExportStats">
+      <h2>导出与统计</h2>
+      <button class="btn" id="exportAppsBtn">导出申请表CSV</button>
+      <button class="btn" id="exportSummaryBtn">导出汇总表CSV</button>
+      <button class="btn secondary" id="statsStyleBtn">统计款式-性别-尺码</button>
+      <button class="btn secondary" id="statsCollegeBtn">统计学院-款式-性别-尺码</button>
+      <div class="list mono" id="statsOut"></div>
+    </div>
+    <div class="card" id="cardReview">
+      <h2>审核页面</h2>
+      <label>批次ID<input id="revBatchIdInline"></label>
+      <label>每页数量<select id="revPageSize"><option>10</option><option selected>20</option><option>50</option></select></label>
+      <button class="btn" id="loadAppsBtn">加载申请</button>
+      <div id="appsList" class="list" style="white-space:normal"></div>
+    </div>
+  </div>
+  <script>
+    const api=path=>path
+    const j=async r=>{if(!r.ok)throw new Error(await r.text());return r.json()}
+    const b=()=>document.getElementById.bind(document)
+    let currentRole="counselor"
+    const adminHdr=()=>({"X-Admin-User":b()("adminUser").textContent})
+    const showToast=(msg,type)=>{const w=b()("toastWrap");const d=document.createElement("div");d.className="toast"+(type?(" "+type):"");d.textContent=msg;w.appendChild(d);setTimeout(()=>{d.style.opacity="0";d.style.transition="opacity .3s";setTimeout(()=>{w.removeChild(d)},300)},2500)}
+    const debounce=(fn,delay)=>{let t;return(...args)=>{clearTimeout(t);t=setTimeout(()=>fn(...args),delay)}}
+    b()("adminLoginBtn").onclick=async()=>{
+      try{
+        const body=new URLSearchParams()
+        body.set("username",b()("adminUsername").value)
+        body.set("password",b()("adminPassword").value)
+        const r=await j(await fetch(api("/api/admin/login"),{method:"POST",body}))
+        b()("adminUser").textContent=r.username
+        b()("adminRole").textContent=r.role
+        currentRole=r.role
+        b()("roleSelect").value=currentRole
+        b()("adminLoginCard").style.display="none"
+        b()("adminAppCards").style.display=""
+        const isCounselor=currentRole==="counselor"
+        b()("roleSelectWrap").style.display=isCounselor?"":"none"
+        const show=(id,visible)=>{const el=b()(id); if(el) el.style.display=visible?"":"none"}
+        show("cardCreateBatch",isCounselor)
+        show("cardSelectionDeadline",isCounselor)
+        show("cardCreateStyle",isCounselor)
+        show("cardCreateStudent",isCounselor)
+        show("cardBatchOps",isCounselor)
+        show("cardExportStats",isCounselor)
+        show("cardReview",true)
+        const batchId=b()("revBatchIdInline").value
+        if(batchId){await b()("loadAppsBtn").onclick()} else {showToast("请填写批次ID以加载审核列表")}
+      }catch(e){
+        showToast("登录失败", "error")
+      }
+    }
+    b()("roleSelect").onchange=()=>{currentRole=b()("roleSelect").value}
+    b()("openBatchBtn").onclick=async()=>{
+      const body=new URLSearchParams()
+      body.set("year",b()("batchYear").value)
+      body.set("difficultyYear",b()("diffYear").value)
+      body.set("difficultyLevel",b()("diffLevel").value)
+      body.set("applicationDeadlineIso",b()("applyDeadline").value)
+      const r=await j(await fetch(api("/api/admin/batch/open"),{method:"POST",headers:adminHdr(),body}))
+      b()("openedBatchId").textContent=r.batchId
+      b()("selBatchId").value=r.batchId
+      b()("revBatchIdInline").value=r.batchId
+      await b()("loadAppsBtn").onclick()
+    }
+    b()("setSelDeadlineBtn").onclick=async()=>{
+      const body=new URLSearchParams()
+      body.set("batchId",b()("selBatchId").value)
+      body.set("deadlineIso",b()("selDeadline").value)
+      await j(await fetch(api("/api/admin/batch/deadline/selection"),{method:"POST",headers:adminHdr(),body}))
+      alert("选择截止设置成功")
+    }
+    b()("createStyleBtn").onclick=async()=>{
+      const variants=JSON.parse(b()("styleVariants").value||"[]")
+      const name=encodeURIComponent(b()("styleName").value)
+      const gender=encodeURIComponent(b()("styleGender").value)
+      const imageUrl=encodeURIComponent(b()("styleImage").value)
+      const url=`/api/admin/styles/create?name=${name}&gender=${gender}&imageUrl=${imageUrl}`
+      const r=await j(await fetch(api(url),{method:"POST",headers:Object.assign({"Content-Type":"application/json"},adminHdr()),body:JSON.stringify(variants)}))
+      b()("createdStyleId").textContent=r.styleId
+      alert("款式创建成功")
+    }
+    b()("createStudentBtn").onclick=async()=>{
+      const body=new URLSearchParams()
+      body.set("studentNumber",b()("stuNum").value)
+      body.set("name",b()("stuName").value)
+      body.set("gender",b()("stuGender").value)
+      body.set("idCardNumber",b()("stuIdCard").value)
+      body.set("entryYear",b()("stuEntryYear").value)
+      body.set("collegeName",b()("stuCollege").value)
+      body.set("difficultyLevel",b()("stuDiffLevel").value)
+      body.set("difficultyYear",b()("stuDiffYear").value)
+      const r=await j(await fetch(api("/api/admin/students/create"),{method:"POST",headers:adminHdr(),body}))
+      b()("createdStudentId").textContent=r.studentId
+    }
+    b()("submitCollegeBtn").onclick=async()=>{
+      const body=new URLSearchParams()
+      body.set("batchId",b()("revBatchIdInline").value)
+      await j(await fetch(api("/api/admin/submit/college"),{method:"POST",headers:adminHdr(),body}))
+      alert("已提交至学院")
+    }
+    b()("submitSchoolBtn").onclick=async()=>{
+      const body=new URLSearchParams()
+      body.set("batchId",b()("revBatchIdInline").value)
+      await j(await fetch(api("/api/admin/submit/school"),{method:"POST",headers:adminHdr(),body}))
+      alert("已提交至学校")
+    }
+    b()("finalizeBtn").onclick=async()=>{
+      const body=new URLSearchParams()
+      body.set("batchId",b()("revBatchIdInline").value)
+      await j(await fetch(api("/api/admin/finalize"),{method:"POST",headers:adminHdr(),body}))
+      alert("终审完成并已通知学生")
+    }
+    const downloadCsv=async url=>{
+      const r=await fetch(api(url),{headers:adminHdr()})
+      if(!r.ok)throw new Error("下载失败")
+      const blob=await r.blob()
+      const a=document.createElement("a")
+      a.href=URL.createObjectURL(blob)
+      a.download=url.includes("summary")?"summary.csv":"applications.csv"
+      a.click()
+      URL.revokeObjectURL(a.href)
+    }
+    b()("exportAppsBtn").onclick=()=>downloadCsv("/api/admin/export/applications.csv?batchId="+encodeURIComponent(b()("revBatchIdInline").value))
+    b()("exportSummaryBtn").onclick=()=>downloadCsv("/api/admin/export/summary.csv?batchId="+encodeURIComponent(b()("revBatchIdInline").value))
+    b()("statsStyleBtn").onclick=async()=>{
+      const r=await j(await fetch(api("/api/admin/stats/style-gender-size?batchId="+encodeURIComponent(b()("revBatchIdInline").value)),{headers:adminHdr()}))
+      b()("statsOut").textContent=JSON.stringify(r,null,2)
+    }
+    b()("statsCollegeBtn").onclick=async()=>{
+      const r=await j(await fetch(api("/api/admin/stats/college-style-gender-size?batchId="+encodeURIComponent(b()("revBatchIdInline").value)),{headers:adminHdr()}))
+      b()("statsOut").textContent=JSON.stringify(r,null,2)
+    }
+    const renderRadio=(name,current)=>[
+      `<label><input type="radio" name="${name}" value="APPROVED" ${current==="APPROVED"?"checked":""}> 通过</label>`,
+      `<label style="margin-left:8px"><input type="radio" name="${name}" value="PENDING" ${current==="PENDING"?"checked":""}> 取消</label>`,
+      `<label style="margin-left:8px"><input type="radio" name="${name}" value="REJECTED" ${current==="REJECTED"?"checked":""}> 拒绝</label>`
+    ].join("")
+    const actReview=async(stage,id,status,rejectReason)=>{
+      const url=stage==="counselor"?"/api/admin/review/counselor":stage==="college"?"/api/admin/review/college":"/api/admin/review/school"
+      const body=new URLSearchParams()
+      body.append("applicationIds",id)
+      body.set("status",status)
+      if(status==="REJECTED" && rejectReason) body.set("rejectReason",rejectReason)
+      await j(await fetch(api(url),{method:"POST",headers:adminHdr(),body}))
+    }
+    b()("loadAppsBtn").onclick=async()=>{
+      const batchId=b()("revBatchIdInline").value
+      if(!batchId){alert("请填写批次ID");return}
+      const size=parseInt(b()("revPageSize").value,10)||20
+      const r=await j(await fetch(api("/api/admin/applications?batchId="+encodeURIComponent(batchId)+"&page=0&size="+size),{headers:adminHdr()}))
+      const list=r.content||[]
+      const box=b()("appsList")
+      box.innerHTML=list.map(a=>{
+        const cName="c-"+a.id, colName="col-"+a.id, schName="sch-"+a.id
+        const showC=currentRole==="counselor"
+        const showCol=currentRole==="college"
+        const showSch=currentRole==="school"
+        return `<div style="border-bottom:1px solid #eee;padding:10px 0">
+          <div><b>${a.student.name}</b>（${a.student.studentNumber} · ${a.student.collegeName}）</div>
+          <div style="margin-top:6px">辅导员：${renderRadio(cName,a.counselorStatus)} ${showC?`<button class="btn" data-stage="counselor" data-id="${a.id}" data-src="${cName}" style="margin-left:8px">保存</button>`:''}</div>
+          <div style="margin-top:6px">学院：${renderRadio(colName,a.collegeStatus)} ${showCol?`<button class="btn" data-stage="college" data-id="${a.id}" data-src="${colName}" style="margin-left:8px">保存</button>`:''}</div>
+          <div style="margin-top:6px">学校：${renderRadio(schName,a.schoolStatus)} ${showSch?`<button class="btn" data-stage="school" data-id="${a.id}" data-src="${schName}" style="margin-left:8px">保存</button>`:''}</div>
+          <div style="margin-top:6px">拒绝理由：<input type="text" id="rej-${a.id}" value="${a.rejectReason||""}" style="width:60%"></div>
+          <div class="muted">已提交：学院 ${a.submittedToCollege?"是":"否"} · 学校 ${a.submittedToSchool?"是":"否"}</div>
+        </div>`
+      }).join("")
+      box.querySelectorAll("button[data-stage]").forEach(btn=>{
+        btn.onclick=async()=>{
+          const id=btn.getAttribute("data-id")
+          const group=btn.getAttribute("data-src")
+          const picked=b().call(document, group)?document.querySelector(`input[name="${group}"]:checked`):null
+          if(!picked){alert("请选择状态");return}
+          const status=picked.value
+          const stage=btn.getAttribute("data-stage")
+          const reason=b()(`rej-${id}`).value
+          await actReview(stage,id,status,reason)
+          alert("已保存")
+        }
+      })
+    }
+    const debouncedLoad=debounce(()=>b()("loadAppsBtn").onclick(),500)
+    b()("revBatchIdInline").addEventListener("input",debouncedLoad)
+  </script>
+</body>
+</html>

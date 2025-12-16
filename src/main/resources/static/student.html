@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>学生页面</title>
+  <style>
+    :root{
+      --bg: #0f172a;
+      --bg2: #111827;
+      --card-bg: #0b1222;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --border: #1f2a44;
+      --shadow: rgba(17,24,39,0.35);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,Segoe UI,Arial;
+      color:var(--text);
+      background: radial-gradient(1200px 600px at 20% -50%, #1e293b 0%, transparent 45%) no-repeat, linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+      min-height:100vh;
+      padding-top:64px;
+    }
+    .topbar{
+      position:fixed;top:0;left:0;right:0;height:64px;
+      display:flex;align-items:center;justify-content:space-between;
+      padding:0 20px;background:rgba(9,12,20,0.75);backdrop-filter:blur(8px);
+      border-bottom:1px solid var(--border);
+    }
+    .brand{font-weight:600;letter-spacing:.5px}
+    .container{width:min(1100px,92%);margin:24px auto}
+    h1{margin:0 0 18px 0;font-size:22px}
+    h2{margin-top:0;font-size:18px}
+    h3{margin:16px 0 8px 0;font-size:15px;color:var(--muted)}
+    .row{display:flex;gap:24px;flex-wrap:wrap}
+    .card{
+      background:var(--card-bg);
+      border:1px solid var(--border);
+      border-radius:14px;padding:18px;flex:1;min-width:320px;
+      box-shadow:0 10px 30px var(--shadow);
+    }
+    label{display:block;margin:10px 0 6px 0;color:var(--muted)}
+    input,select,textarea{
+      width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);
+      background:#0a1020;color:var(--text);outline:none;
+    }
+    textarea{min-height:80px}
+    .btn{
+      display:inline-flex;align-items:center;gap:8px;
+      background:var(--primary);color:#fff;border:none;border-radius:10px;padding:10px 14px;cursor:pointer;
+      transition:.2s ease;box-shadow:0 6px 16px rgba(59,130,246,.25);
+    }
+    .btn:hover{background:var(--primary-hover)}
+    .btn.secondary{background:#374151}
+    .muted{color:var(--muted);font-size:12px}
+    .mono{font-family:ui-monospace,Consolas}
+    .list{
+      white-space:pre-line;background:#0a1020;border:1px solid var(--border);
+      border-radius:10px;padding:10px;min-height:60px;color:var(--text)
+    }
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+    .style{border:1px solid var(--border);border-radius:12px;padding:10px;background:#0a1020}
+    .style-img{width:100%;height:120px;border-radius:8px;object-fit:cover;margin:8px 0}
+    a{color:var(--text);text-decoration:none;opacity:.9}
+    a:hover{opacity:1}
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">寒衣补助 · 学生页面</div>
+    <div><a href="/admin.html">管理员登录</a></div>
+  </div>
+  <div class="container">
+  <div class="row">
+    <div class="card" style="flex:1">
+      <h2>学生模块</h2>
+      <div class="muted">令牌：<span id="sToken" class="mono"></span> 姓名：<span id="sName"></span></div>
+      <h3>申请</h3>
+      <label>批次ID<input id="applyBatchId"></label>
+      <label>申请理由<textarea id="applyReason" rows="2"></textarea></label>
+      <button class="btn" id="applyBtn">提交申请</button>
+      <div class="muted">申请ID：<span id="applyId" class="mono"></span></div>
+      <h3>查看可选款式</h3>
+      <label>批次ID<input id="selBatchIdStu"></label>
+      <button class="btn" id="loadStylesBtn">加载款式</button>
+      <div class="grid" id="stylesGrid"></div>
+      <h3>通知</h3>
+      <button class="btn secondary" id="loadNoticesBtn">加载通知</button>
+      <div class="list" id="noticesOut"></div>
+    </div>
+  </div>
+  </div>
+  <script>
+    const api=path=>path
+    const j=async r=>{if(!r.ok)throw new Error(await r.text());return r.json()}
+    const b=()=>document.getElementById.bind(document)
+    const stuHdr=()=>({"X-Student-Token":b()("sToken").textContent})
+    const ensureLogin=()=>{
+      const token=localStorage.getItem("studentToken")||""
+      const name=localStorage.getItem("studentName")||""
+      if(!token){location.href="/student-login.html";return false}
+      b()("sToken").textContent=token
+      b()("sName").textContent=name
+      return true
+    }
+    const loadStylesNow=async()=>{
+      if(!b()("sToken").textContent){alert("请先登录");return}
+      try{
+        const r=await j(await fetch(api("/api/student/styles"),{headers:stuHdr()}))
+        const grid=b()("stylesGrid")
+        grid.innerHTML=""
+        r.forEach(s=>{
+          const div=document.createElement("div")
+          div.className="style"
+          const url=s.imageUrl||""
+          const radios=(s.variants||[]).map(v=>`<label style="display:inline-block;margin-right:10px"><input type="radio" name="size-${s.id}" value="${v.id}"> ${v.sizeLabel}</label>`).join("")
+          div.innerHTML=`<div><b>${s.name}</b> · ${s.gender}</div>
+            <img class="style-img" src="${url}" alt="${s.name}" referrerpolicy="no-referrer" loading="lazy" onerror="this.style.display='none'">
+            <div class="muted">请选择尺码：</div>
+            <div>${radios || '<span class="muted">暂无可选尺码</span>'}</div>
+            <button class="btn" data-style="${s.id}">登记选择</button>
+            <div class="muted">选择ID：<span class="mono" id="sel-out-${s.id}"></span></div>`
+          grid.appendChild(div)
+          const btn=div.querySelector("button[data-style]")
+          btn.onclick=async()=>{
+            const batchId=b()("selBatchIdStu").value
+            if(!batchId){alert("请先填写批次ID");return}
+            const picked=div.querySelector(`input[name="size-${s.id}"]:checked`)
+            if(!picked){alert("请先选择尺码");return}
+            const body=new URLSearchParams()
+            body.set("batchId",batchId)
+            body.set("variantId",picked.value)
+            const resp=await j(await fetch(api("/api/student/select"),{method:"POST",headers:stuHdr(),body}))
+            b()(`sel-out-${s.id}`).textContent=resp.selectionId
+            alert("登记成功")
+          }
+        })
+      }catch(e){
+        alert("加载失败："+e.message)
+      }
+    }
+    const loadNoticesNow=async()=>{
+      const r=await j(await fetch(api("/api/student/notifications"),{headers:stuHdr()}))
+      b()("noticesOut").textContent=(r||[]).map(n=>`[${n.createdAt}] ${n.message}`).join("\n")
+    }
+    if(ensureLogin()){
+      loadStylesNow()
+      loadNoticesNow()
+    }
+    b()("applyBtn").onclick=async()=>{
+      const body=new URLSearchParams()
+      body.set("batchId",b()("applyBatchId").value)
+      body.set("reason",b()("applyReason").value)
+      const r=await j(await fetch(api("/api/student/apply"),{method:"POST",headers:stuHdr(),body}))
+      b()("applyId").textContent=r.applicationId
+      alert("申请提交成功")
+    }
+    b()("loadStylesBtn").onclick=loadStylesNow
+    b()("loadNoticesBtn").onclick=loadNoticesNow
+  </script>
+</body>
+</html>
