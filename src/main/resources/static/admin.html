@@ -147,7 +147,7 @@
     </div>
     <div class="card" id="cardReview">
       <h2>审核页面</h2>
-      <label>批次ID<input id="revBatchIdInline"></label>
+      <label>批次<select id="revBatchIdInline"><option value="1" selected>1</option></select></label>
       <label>每页数量<select id="revPageSize"><option>10</option><option selected>20</option><option>50</option></select></label>
       <button class="btn" id="loadAppsBtn">加载申请</button>
       <div id="appsList" class="list" style="white-space:normal"></div>
@@ -199,7 +199,10 @@
       const r=await j(await fetch(api("/api/admin/batch/open"),{method:"POST",headers:adminHdr(),body}))
       b()("openedBatchId").textContent=r.batchId
       b()("selBatchId").value=r.batchId
-      b()("revBatchIdInline").value=r.batchId
+      const sel=b()("revBatchIdInline")
+      const exists=[...sel.options].some(o=>o.value==r.batchId)
+      if(!exists){const opt=document.createElement("option");opt.value=r.batchId;opt.textContent=r.batchId;sel.appendChild(opt)}
+      sel.value=r.batchId
       await b()("loadAppsBtn").onclick()
     }
     b()("setSelDeadlineBtn").onclick=async()=>{
@@ -318,8 +321,8 @@
         }
       })
     }
-    const debouncedLoad=debounce(()=>b()("loadAppsBtn").onclick(),500)
-    b()("revBatchIdInline").addEventListener("input",debouncedLoad)
+    const debouncedLoad=debounce(()=>b()("loadAppsBtn").onclick(),400)
+    b()("revBatchIdInline").addEventListener("change",debouncedLoad)
   </script>
 </body>
 </html>
