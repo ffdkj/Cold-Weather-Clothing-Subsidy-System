@@ -22,6 +22,15 @@ public class AdminAuthService {
         Optional<AdminUser> user = adminRepo.findByUsername(userId);
         return user.isPresent();
     }
+    public String roleOf(String userId) {
+        if (userId == null) return null;
+        if (whitelist.contains(userId)) return "counselor";
+        return adminRepo.findByUsername(userId).map(AdminUser::getRole).orElse(null);
+    }
+    public boolean hasRole(String userId, String role) {
+        String r = roleOf(userId);
+        return r != null && role != null && r.equalsIgnoreCase(role);
+    }
     public Optional<AdminUser> login(String username, String password) {
         if (username == null || password == null) return Optional.empty();
         Optional<AdminUser> u = adminRepo.findByUsername(username);

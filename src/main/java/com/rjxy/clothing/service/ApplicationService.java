@@ -52,6 +52,7 @@ public class ApplicationService {
     public void bulkReviewCollege(List<Long> ids, String status, String rejectReason) {
         for (Long id : ids) {
             repo.findById(id).ifPresent(app -> {
+                if (!Boolean.TRUE.equals(app.getSubmittedToCollege())) return;
                 if (Boolean.TRUE.equals(app.getSubmittedToSchool())) return;
                 app.setCollegeStatus(status);
                 if ("REJECTED".equalsIgnoreCase(status)) app.setRejectReason(rejectReason);
@@ -63,6 +64,7 @@ public class ApplicationService {
     public void bulkReviewSchool(List<Long> ids, String status, String rejectReason) {
         for (Long id : ids) {
             repo.findById(id).ifPresent(app -> {
+                if (!Boolean.TRUE.equals(app.getSubmittedToSchool())) return;
                 if (app.getBatch() != null && Boolean.TRUE.equals(app.getBatch().getFinalAuditCompleted())) return;
                 app.setSchoolStatus(status);
                 if ("REJECTED".equalsIgnoreCase(status)) app.setRejectReason(rejectReason);
@@ -74,8 +76,9 @@ public class ApplicationService {
     public void submitToCollegeAfterDeadline(SubsidyBatch batch) {
         Page<StudentApplication> page = repo.findByBatch(batch, PageRequest.of(0, Integer.MAX_VALUE));
         for (StudentApplication app : page.getContent()) {
+            if (!"APPROVED".equalsIgnoreCase(app.getCounselorStatus())) continue;
             app.setSubmittedToCollege(true);
-            if ("PENDING".equals(app.getCollegeStatus())) app.setCollegeStatus("APPROVED");
+            if (app.getCollegeStatus() == null) app.setCollegeStatus("PENDING");
             repo.save(app);
         }
     }
@@ -83,8 +86,9 @@ public class ApplicationService {
     public void submitToSchool(SubsidyBatch batch) {
         Page<StudentApplication> page = repo.findByBatch(batch, PageRequest.of(0, Integer.MAX_VALUE));
         for (StudentApplication app : page.getContent()) {
+            if (!"APPROVED".equalsIgnoreCase(app.getCollegeStatus())) continue;
             app.setSubmittedToSchool(true);
-            if ("PENDING".equals(app.getSchoolStatus())) app.setSchoolStatus("APPROVED");
+            if (app.getSchoolStatus() == null) app.setSchoolStatus("PENDING");
             repo.save(app);
         }
     }

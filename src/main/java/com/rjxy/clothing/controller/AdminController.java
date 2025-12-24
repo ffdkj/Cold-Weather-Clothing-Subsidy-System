@@ -62,6 +62,7 @@ public class AdminController {
                                        @RequestParam String difficultyLevel,
                                        @RequestParam String applicationDeadlineIso) {
         if (!authorized(userId)) return ResponseEntity.status(403).build();
+        if (!auth.hasRole(userId, "counselor")) return ResponseEntity.status(403).body("counselor_only_access");
         LocalDateTime deadline = LocalDateTime.parse(applicationDeadlineIso);
         SubsidyBatch b = batchService.openBatch(year, difficultyYear, difficultyLevel, deadline);
         return ResponseEntity.ok(Map.of("batchId", b.getId()));
@@ -72,6 +73,7 @@ public class AdminController {
                                          @RequestParam Long batchId,
                                          @RequestParam String deadlineIso) {
         if (!authorized(userId)) return ResponseEntity.status(403).build();
+        if (!auth.hasRole(userId, "counselor")) return ResponseEntity.status(403).body("counselor_only_access");
         return batchService.updateApplicationDeadline(batchId, LocalDateTime.parse(deadlineIso))
                 .<ResponseEntity<?>>map(b -> ResponseEntity.ok(Map.of("batchId", b.getId())))
                 .orElseGet(() -> ResponseEntity.badRequest().body("batch_not_found"));
@@ -82,6 +84,7 @@ public class AdminController {
                                           @RequestParam Long batchId,
                                           @RequestParam String deadlineIso) {
         if (!authorized(userId)) return ResponseEntity.status(403).build();
+        if (!auth.hasRole(userId, "counselor")) return ResponseEntity.status(403).body("counselor_only_access");
         return batchService.updateSelectionDeadline(batchId, LocalDateTime.parse(deadlineIso))
                 .<ResponseEntity<?>>map(b -> ResponseEntity.ok(Map.of("batchId", b.getId())))
                 .orElseGet(() -> ResponseEntity.badRequest().body("batch_not_found"));
@@ -94,6 +97,7 @@ public class AdminController {
                                          @RequestParam String imageUrl,
                                          @RequestBody List<Map<String, String>> variants) {
         if (!authorized(userId)) return ResponseEntity.status(403).build();
+        if (!auth.hasRole(userId, "counselor")) return ResponseEntity.status(403).body("counselor_only_access");
         List<ClothingVariant> list = variants.stream().map(m -> {
             ClothingVariant v = new ClothingVariant();
             v.setSizeLabel(m.get("sizeLabel"));
@@ -115,6 +119,10 @@ public class AdminController {
                                            @RequestParam String difficultyLevel,
                                            @RequestParam Integer difficultyYear) {
         if (!authorized(userId)) return ResponseEntity.status(403).build();
+        if (!auth.hasRole(userId, "counselor")) return ResponseEntity.status(403).body("counselor_only_access");
+        if (studentRepository.findByStudentNumber(studentNumber).isPresent()) {
+            return ResponseEntity.status(409).body("student_number_exists");
+        }
         Student s = new Student();
         s.setStudentNumber(studentNumber);
         s.setName(name);
@@ -134,6 +142,7 @@ public class AdminController {
                                              @RequestParam String status,
                                              @RequestParam(required = false) String rejectReason) {
         if (!authorized(userId)) return ResponseEntity.status(403).build();
+        if (!auth.hasRole(userId, "counselor")) return ResponseEntity.status(403).body("counselor_only_access");
         applicationService.bulkReviewCounselor(applicationIds, status, rejectReason);
         return ResponseEntity.ok("ok");
     }
@@ -144,6 +153,7 @@ public class AdminController {
                                            @RequestParam String status,
                                            @RequestParam(required = false) String rejectReason) {
         if (!authorized(userId)) return ResponseEntity.status(403).build();
+        if (!auth.hasRole(userId, "college")) return ResponseEntity.status(403).body("college_only_access");
         applicationService.bulkReviewCollege(applicationIds, status, rejectReason);
         return ResponseEntity.ok("ok");
     }
@@ -154,6 +164,7 @@ public class AdminController {
                                           @RequestParam String status,
                                           @RequestParam(required = false) String rejectReason) {
         if (!authorized(userId)) return ResponseEntity.status(403).build();
+        if (!auth.hasRole(userId, "school")) return ResponseEntity.status(403).body("school_only_access");
         applicationService.bulkReviewSchool(applicationIds, status, rejectReason);
         return ResponseEntity.ok("ok");
     }
@@ -162,6 +173,7 @@ public class AdminController {
     public ResponseEntity<?> submitCollege(@RequestHeader("X-Admin-User") String userId,
                                            @RequestParam Long batchId) {
         if (!authorized(userId)) return ResponseEntity.status(403).build();
+        if (!auth.hasRole(userId, "counselor")) return ResponseEntity.status(403).body("counselor_only_access");
         Optional<SubsidyBatch> b = batchRepo.findById(batchId);
         if (b.isEmpty()) return ResponseEntity.badRequest().body("batch_not_found");
         applicationService.submitToCollegeAfterDeadline(b.get());
@@ -172,6 +184,7 @@ public class AdminController {
     public ResponseEntity<?> submitSchool(@RequestHeader("X-Admin-User") String userId,
                                           @RequestParam Long batchId) {
         if (!authorized(userId)) return ResponseEntity.status(403).build();
+        if (!auth.hasRole(userId, "college")) return ResponseEntity.status(403).body("college_only_access");
         Optional<SubsidyBatch> b = batchRepo.findById(batchId);
         if (b.isEmpty()) return ResponseEntity.badRequest().body("batch_not_found");
         applicationService.submitToSchool(b.get());
@@ -182,6 +195,7 @@ public class AdminController {
     public ResponseEntity<?> finalizeAndNotify(@RequestHeader("X-Admin-User") String userId,
                                                @RequestParam Long batchId) {
         if (!authorized(userId)) return ResponseEntity.status(403).build();
+        if (!auth.hasRole(userId, "school")) return ResponseEntity.status(403).body("school_only_access");
         Optional<SubsidyBatch> b = batchRepo.findById(batchId);
         if (b.isEmpty()) return ResponseEntity.badRequest().body("batch_not_found");
         SubsidyBatch batch = b.get();
@@ -205,6 +219,7 @@ public class AdminController {
                                                @RequestParam Long studentId,
                                                @RequestParam Long variantId) {
         if (!authorized(userId)) return ResponseEntity.status(403).build();
+        if (!auth.hasRole(userId, "counselor")) return ResponseEntity.status(403).body("counselor_only_access");
         Optional<SubsidyBatch> b = batchRepo.findById(batchId);
         if (b.isEmpty()) return ResponseEntity.badRequest().body("batch_not_found");
         Optional<Student> s = studentRepository.findById(studentId);
