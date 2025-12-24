@@ -3,6 +3,7 @@ package com.rjxy.clothing.controller;
 import com.rjxy.clothing.model.*;
 import com.rjxy.clothing.repo.SubsidyBatchRepository;
 import com.rjxy.clothing.service.*;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -56,6 +57,24 @@ public class StudentController {
                 .orElseGet(() -> ResponseEntity.badRequest().body("not_allowed"));
     }
 
+    @GetMapping("/batches")
+    public ResponseEntity<?> batches(@RequestHeader("X-Student-Token") String token) {
+        Optional<Student> s = studentService.byToken(token);
+        if (s.isEmpty()) return ResponseEntity.status(401).build();
+        List<SubsidyBatch> list = batchRepo.findAll(Sort.by(Sort.Direction.ASC, "id"));
+        return ResponseEntity.ok(list.stream()
+                .map(b -> Map.of(
+                        "id", b.getId(),
+                        "difficultyLevel", b.getDifficultyLevel(),
+                        "difficultyYear", b.getDifficultyYear(),
+                        "year", b.getYear(),
+                        "applicationDeadline", b.getApplicationDeadline(),
+                        "selectionDeadline", b.getSelectionDeadline(),
+                        "finalAuditCompleted", b.getFinalAuditCompleted()
+                ))
+                .toList());
+    }
+
     @GetMapping("/styles")
     public ResponseEntity<?> styles(@RequestHeader("X-Student-Token") String token) {
         Optional<Student> s = studentService.byToken(token);
@@ -83,6 +102,12 @@ public class StudentController {
     public ResponseEntity<?> notifications(@RequestHeader("X-Student-Token") String token) {
         Optional<Student> s = studentService.byToken(token);
         if (s.isEmpty()) return ResponseEntity.status(401).build();
-        return ResponseEntity.ok(notificationService.list(s.get()));
+        return ResponseEntity.ok(notificationService.list(s.get()).stream()
+                .map(n -> Map.of(
+                        "id", n.getId(),
+                        "message", n.getMessage(),
+                        "createdAt", n.getCreatedAt()
+                ))
+                .toList());
     }
 }

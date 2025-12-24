@@ -128,10 +128,7 @@
       
       <div id="loginInfo" style="display:none; margin-top:20px; border-top:1px solid #eee; padding-top:10px">
          <div class="muted">角色：<span id="adminRole" class="mono"></span> 用户：<span id="adminUser" class="mono"></span></div>
-         <div id="roleSelectWrap" style="margin-top:10px">
-           <label style="margin:0 0 5px 0">当前视图权限</label>
-           <select id="roleSelect"><option value="counselor">辅导员</option><option value="college">学院</option><option value="school">学校</option></select>
-         </div>
+         <div id="roleSelectWrap" style="display:none"></div>
       </div>
     </div>
 
@@ -242,7 +239,6 @@
         b()("adminUser").textContent=r.username
         b()("adminRole").textContent=r.role
         currentRole=r.role
-        b()("roleSelect").value=currentRole
         // UI Toggle
         b()("adminLoginCard").style.display="none" // 登录成功隐藏大卡片，实际逻辑可以是仅仅隐藏输入框保留头部
         // 这里为了简单，我们隐藏整个登录卡片，显示Dashboard
@@ -253,22 +249,25 @@
         // 在控制台里，我们不需要一直看“登录”卡片。
         
         const isCounselor=currentRole==="counselor"
-        b()("roleSelectWrap").style.display=isCounselor?"":"none"
+        const isCollege=currentRole==="college"
+        const isSchool=currentRole==="school"
         const show=(id,visible)=>{const el=b()(id); if(el) el.style.display=visible?"":"none"}
         show("cardCreateBatch",isCounselor)
         show("cardSelectionDeadline",isCounselor)
         show("cardCreateStyle",isCounselor)
         show("cardCreateStudent",isCounselor)
-        show("cardBatchOps",isCounselor)
+        show("cardBatchOps",isCounselor || isCollege || isSchool)
         show("cardExportStats",isCounselor) // 导出通常也给辅导员看吗？按原逻辑是的
         show("cardReview",true)
+        show("submitCollegeBtn",isCounselor)
+        show("submitSchoolBtn",isCollege)
+        show("finalizeBtn",isSchool)
         const batchId=b()("revBatchIdInline").value
         if(batchId){await b()("loadAppsBtn").onclick()} else {showToast("请填写批次ID以加载审核列表")}
       }catch(e){
         showToast("登录失败: " + e.message, "error")
       }
     }
-    b()("roleSelect").onchange=()=>{currentRole=b()("roleSelect").value}
     b()("openBatchBtn").onclick=async()=>{
       try {
         const body=new URLSearchParams()
@@ -392,34 +391,33 @@
         const list=r.content||[]
         const box=b()("appsList")
         if(list.length === 0) { box.innerHTML = '<div style="padding:20px;text-align:center;color:#999">暂无申请数据</div>'; return; }
+        const statusLabel=s=>{
+          if(s==="APPROVED") return '<span style="color:#10b981">通过</span>'
+          if(s==="REJECTED") return '<span style="color:#ef4444">拒绝</span>'
+          if(s==="PENDING") return '<span style="color:#64748b">待定</span>'
+          return '<span style="color:#64748b">未处理</span>'
+        }
+        const stageRow=(label, groupName, currentStatus, canEdit, stage, id)=>`
+          <div class="status-row">
+            <span class="status-label">${label}</span>
+            ${canEdit ? renderRadio(groupName,currentStatus) : `<span class="mono">${statusLabel(currentStatus)}</span>`}
+            ${canEdit ? `<button class="btn" style="margin:0;padding:4px 10px;height:28px" data-stage="${stage}" data-id="${id}" data-src="${groupName}">保存</button>` : ''}
+          </div>
+        `
         box.innerHTML=list.map(a=>{
           const cName="c-"+a.id, colName="col-"+a.id, schName="sch-"+a.id
-          const showC=currentRole==="counselor"
-          const showCol=currentRole==="college"
-          const showSch=currentRole==="school"
+          const canC=currentRole==="counselor"
+          const canCol=currentRole==="college"
+          const canSch=currentRole==="school"
           return `<div class="review-item">
             <div class="review-header">
                <div><b>${a.student.name}</b> <span class="muted" style="margin-left:8px">${a.student.studentNumber} · ${a.student.collegeName}</span></div>
                <div class="muted">ID: ${a.id}</div>
             </div>
             
-            <div class="status-row">
-              <span class="status-label">辅导员</span>
-              ${renderRadio(cName,a.counselorStatus)} 
-              ${showC?`<button class="btn" style="margin:0;padding:4px 10px;height:28px" data-stage="counselor" data-id="${a.id}" data-src="${cName}">保存</button>`:''}
-            </div>
-            
-            <div class="status-row">
-              <span class="status-label">学院</span>
-              ${renderRadio(colName,a.collegeStatus)} 
-              ${showCol?`<button class="btn" style="margin:0;padding:4px 10px;height:28px" data-stage="college" data-id="${a.id}" data-src="${colName}">保存</button>`:''}
-            </div>
-
-            <div class="status-row">
-              <span class="status-label">学校</span>
-              ${renderRadio(schName,a.schoolStatus)} 
-              ${showSch?`<button class="btn" style="margin:0;padding:4px 10px;height:28px" data-stage="school" data-id="${a.id}" data-src="${schName}">保存</button>`:''}
-            </div>
+            ${stageRow("辅导员", cName, a.counselorStatus, canC, "counselor", a.id)}
+            ${stageRow("学院", colName, a.collegeStatus, canCol, "college", a.id)}
+            ${stageRow("学校", schName, a.schoolStatus, canSch, "school", a.id)}
 
             <div style="display:flex;align-items:center;gap:10px; margin-top:4px">
               <span class="status-label">拒绝理由</span>
@@ -430,15 +428,19 @@
         }).join("")
         box.querySelectorAll("button[data-stage]").forEach(btn=>{
           btn.onclick=async()=>{
-            const id=btn.getAttribute("data-id")
-            const group=btn.getAttribute("data-src")
-            const picked=b().call(document, group)?document.querySelector(`input[name="${group}"]:checked`):null
-            if(!picked){alert("请选择状态");return}
-            const status=picked.value
-            const stage=btn.getAttribute("data-stage")
-            const reason=b()(`rej-${id}`).value
-            await actReview(stage,id,status,reason)
-            showToast("保存成功")
+            try{
+              const id=btn.getAttribute("data-id")
+              const group=btn.getAttribute("data-src")
+              const picked = document.querySelector(`input[name="${group}"]:checked`)
+              if(!picked){showToast("请选择状态", "error");return}
+              const status=picked.value
+              const stage=btn.getAttribute("data-stage")
+              const reason=b()(`rej-${id}`).value
+              await actReview(stage,id,status,reason)
+              showToast("保存成功")
+            }catch(e){
+              showToast(e.message || "保存失败", "error")
+            }
           }
         })
       } catch(e) { showToast(e.message, "error") }
