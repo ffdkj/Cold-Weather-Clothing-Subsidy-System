@@ -137,13 +137,13 @@
         <h2>款式选择</h2>
       </div>
       <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px">
-        <input id="selBatchIdStu" placeholder="输入批次 ID 查看可选款式" style="max-width:200px">
+        <select id="selBatchIdStu" style="max-width:260px; padding:10px 12px; border-radius: 8px; border: 1px solid var(--border); outline:none"></select>
         <button class="btn secondary" id="loadStylesBtn">加载款式</button>
       </div>
       
       <div class="grid" id="stylesGrid">
         <div class="style-card" style="display:flex;align-items:center;justify-content:center;height:200px;background:#f8fafc;color:#999;grid-column:1/-1">
-          暂无数据，请输入批次ID并加载
+          暂无数据，请选择批次并加载
         </div>
       </div>
     </div>
@@ -177,10 +177,42 @@
       return true
     }
 
+    const loadBatchesNow=async()=>{
+      try{
+        const list=await j(await fetch(api("/api/student/batches"),{headers:stuHdr()}))
+        const sel=b()("selBatchIdStu")
+        sel.innerHTML=""
+        if(!list || list.length===0){
+          const opt=document.createElement("option")
+          opt.value=""
+          opt.textContent="暂无批次"
+          sel.appendChild(opt)
+          b()("loadStylesBtn").disabled=true
+          return
+        }
+        list.forEach(x=>{
+          const opt=document.createElement("option")
+          opt.value=String(x.id)
+          opt.textContent=`批次 ${x.id} · ${x.difficultyLevel}`
+          sel.appendChild(opt)
+        })
+        b()("loadStylesBtn").disabled=false
+        if(!sel.value) sel.value=String(list[0].id)
+      }catch(e){
+        const sel=b()("selBatchIdStu")
+        sel.innerHTML=""
+        const opt=document.createElement("option")
+        opt.value=""
+        opt.textContent="批次加载失败"
+        sel.appendChild(opt)
+        b()("loadStylesBtn").disabled=true
+      }
+    }
+
     const loadStylesNow=async()=>{
       if(!b()("sToken").textContent){alert("请先登录");return}
       const batchId = b()("selBatchIdStu").value;
-      if(!batchId) { alert("请先输入批次ID"); return; }
+      if(!batchId) { alert("请先选择批次"); return; }
       
       try{
         const r=await j(await fetch(api("/api/student/styles"),{headers:stuHdr()}))
@@ -217,7 +249,7 @@
           const btn=div.querySelector("button[data-style]")
           btn.onclick=async()=>{
             const batchId=b()("selBatchIdStu").value
-            if(!batchId){alert("请先填写批次ID");return}
+            if(!batchId){alert("请先选择批次");return}
             const picked=div.querySelector(`input[name="size-${s.id}"]:checked`)
             if(!picked){alert("请先选择尺码");return}
             
@@ -249,11 +281,13 @@
             ${n.message}
           </div>
         `).join("")
-      } catch(e) { console.error(e) }
+      } catch(e) {
+        b()("noticesOut").innerHTML = '<div style="text-align:center; padding:10px; color:#ef4444">通知加载失败</div>'
+      }
     }
 
     if(ensureLogin()){
-      // 自动尝试加载一次通知
+      loadBatchesNow()
       loadNoticesNow()
     }
 
@@ -269,6 +303,7 @@
     }
     b()("loadStylesBtn").onclick=loadStylesNow
     b()("loadNoticesBtn").onclick=loadNoticesNow
+    b()("selBatchIdStu").addEventListener("change",()=>{ b()("stylesGrid").innerHTML='<div class="style-card" style="display:flex;align-items:center;justify-content:center;height:200px;background:#f8fafc;color:#999;grid-column:1/-1">请选择批次后加载款式</div>' })
   </script>
 </body>
 </html>
